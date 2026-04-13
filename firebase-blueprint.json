@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user role and subscription details.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "client"] },
+        "trialStartDate": { "type": "string", "format": "date-time" },
+        "isPaid": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "BusinessConfig": {
+      "title": "Business Configuration",
+      "description": "Stores the business information that the AI uses to learn.",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "services": { "type": "string" },
+        "pricing": { "type": "string" },
+        "faqs": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name"]
+    },
+    "Lead": {
+      "title": "Lead",
+      "description": "Customer details collected by the AI.",
+      "type": "object",
+      "properties": {
+        "businessId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "source": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "contacted", "converted", "lost"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["businessId", "phone", "createdAt"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Booked appointments by customers.",
+      "type": "object",
+      "properties": {
+        "businessId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "time": { "type": "string" },
+        "service": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["businessId", "customerPhone", "date"]
+    },
+    "GlobalConfig": {
+      "title": "Global Configuration",
+      "description": "Stores global settings like payment details.",
+      "type": "object",
+      "properties": {
+        "paymentUpiId": { "type": "string" },
+        "subscriptionFee": { "type": "number" },
+        "paymentQrBase64": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and subscription status."
+    },
+    "/businesses/{businessId}": {
+      "schema": "BusinessConfig",
+      "description": "Business configurations for each client."
+    },
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Leads filtered by businessId."
+    },
+    "/appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Appointments filtered by businessId."
+    },
+    "/config/{configId}": {
+      "schema": "GlobalConfig",
+      "description": "Global settings for the application."
+    }
+  }
+}

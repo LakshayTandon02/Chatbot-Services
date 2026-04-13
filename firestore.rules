@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - email: string (required)
+    //   - role: string (enum: admin, client)
+    //   - trialStartDate: timestamp
+    //   - isPaid: bool
+    //   - paidUntil: timestamp
+    //   - paymentStatus: string (trial, pending, paid)
+    //   - submittedTransactionId: string
+    //   - paymentSubmissionDate: string
+    //   - createdAt: timestamp
+    //
+    // Collection: config
+    // Document ID: global
+    // Fields:
+    //   - paymentUpiId: string
+    //   - subscriptionFee: number
+    //   - paymentQrBase64: string
+    //
+    // Collection: businesses
+    // Document ID: {userId} (Matches the owner's UID)
+    // Fields:
+    //   - ownerId: string (required)
+    //   - name: string
+    //   - description: string
+    //   - services: string
+    //   - pricing: string
+    //   - faqs: string
+    //   - whatsappNumber: string
+    //   - updatedAt: timestamp
+    //
+    // Collection: leads
+    // Document ID: auto-generated
+    // Fields:
+    //   - businessId: string (required)
+    //   - name: string
+    //   - phone: string
+    //   - status: string
+    //   - createdAt: timestamp
+    //
+    // Collection: appointments
+    // Document ID: auto-generated
+    // Fields:
+    //   - businessId: string (required)
+    //   - customerName: string
+    //   - date: string
+    //   - time: string
+    //   - createdAt: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the user is the Super Admin (Lakshay)
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        request.auth.token.email == "lakshaytandon125@gmail.com";
+    }
+
+    // Check if the user is the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User Profiles
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      allow update: if isSuperAdmin() || (
+        isOwner(userId) && 
+        // Prevent self-escalation
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isPaid', 'trialStartDate', 'paidUntil']) &&
+        // If they are updating paymentStatus, it must be to 'pending'
+        (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['paymentStatus']) ||
+          request.resource.data.paymentStatus == 'pending'
+        )
+      );
+    }
+
+    // Business Configurations (Bot Settings)
+    match /businesses/{businessId} {
+      // Public read for the chatbot widget to function on external sites
+      allow read: if true; 
+      // Only the business owner (client) or Super Admin can modify settings
+      allow write: if isOwner(businessId) || isSuperAdmin();
+    }
+
+    // Leads & Appointments
+    // These are created by the chatbot (public) but read only by the owner
+    match /leads/{leadId} {
+      allow create: if true; 
+      allow get: if isSuperAdmin() || 
+        (isAuthenticated() && resource.data.businessId == request.auth.uid);
+      allow list: if isSuperAdmin() || 
+        (isAuthenticated() && resource.data.businessId == request.auth.uid);
+      allow update, delete: if isSuperAdmin() || 
+        (isAuthenticated() && resource.data.businessId == request.auth.uid);
+    }
+
+    match /appointments/{appointmentId} {
+      allow create: if true;
+      allow get: if isSuperAdmin() || 
+        (isAuthenticated() && resource.data.businessId == request.auth.uid);
+      allow list: if isSuperAdmin() || 
+        (isAuthenticated() && resource.data.businessId == request.auth.uid);
+      allow update, delete: if isSuperAdmin() || 
+        (isAuthenticated() && resource.data.businessId == request.auth.uid);
+    }
+
+    // Chat Sessions
+    match /chats/{chatId} {
+      allow read, write: if true;
+    }
+
+    // Global Configuration
+    match /config/{configId} {
+      // Everyone can read global config (to see payment details)
+      allow read: if true;
+      // Only Super Admin can modify global config
+      allow write: if isSuperAdmin();
+    }
+  }
+}

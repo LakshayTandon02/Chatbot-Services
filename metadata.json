@@ -1,0 +1,6 @@
+{
+  "name": "Code Ignite Media AI",
+  "description": "AI-powered business assistant by Code Ignite Media. Automate customer support, lead generation, and appointments.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": []
+}
